@@ -1,0 +1,79 @@
+version: '3.7'
+
+services:
+  wp:
+    image: wordpress:latest # https://hub.docker.com/_/wordpress/
+    networks:
+     - dmz
+    ports:
+      - 80:80 # change ip if required
+    volumes:
+      - ./config/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
+      - ./wp-app:/var/www/html # Full wordpress project
+      #- ./plugin-name/trunk/:/var/www/html/wp-content/plugins/plugin-name # Plugin development
+      #- ./theme-name/trunk/:/var/www/html/wp-content/themes/theme-name # Theme development
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: "wp_test123"
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: "k6I8Mrbbb3Kly5Bp"
+    depends_on:
+      - db
+    links:
+      - db
+
+  wpcli:
+    image: wordpress:cli
+    volumes:
+      - ./config/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
+      - ./wp-app:/var/www/html
+    depends_on:
+      - db
+      - wp
+    networks:
+     - dmz
+
+  pma:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: "k6I8Mrbbb3Kly5Bp"
+    ports:
+      - 880:80
+    links:
+      - db:db
+
+  db:
+    image: mysql:latest # https://hub.docker.com/_/mysql/ - or mariadb https://hub.docker.com/_/mariadb
+    networks:
+     - dmz
+    ports:
+      - 3306:3306 # change ip if required
+    command: [
+        '--default_authentication_plugin=mysql_native_password',
+        '--character-set-server=utf8mb4',
+        '--collation-server=utf8mb4_unicode_ci'
+    ]
+    volumes:
+      - ./wp-data:/docker-entrypoint-initdb.d
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: "wp_test123"
+      MYSQL_ROOT_PASSWORD: "k6I8Mrbbb3Kly5Bp"
+
+volumes:
+  db_data:
+
+
+
+networks:
+    dmz:
+      # use the bridge driver, but enable IPv6
+                 driver: bridge
+                 driver_opts:
+                 ipam:
+                 driver: default
+                 config:
+                 - subnet: 172.16.238.0/24
+                   gateway: 172.16.238.1
